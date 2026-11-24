@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>特勤处收菜 · 架构设计文档 v0.1.0</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --ink: #1b2430;
+    --muted: #5b6876;
+    --line: #e1e6ea;
+    --accent: #2f6b4f;
+    --accent-soft: #e8f2ec;
+    --amber: #b45309;
+    --amber-soft: #fdf3e3;
+    --red: #b42318;
+    --red-soft: #fdecea;
+    --blue: #1d4e89;
+    --blue-soft: #e8f0fa;
+    --code-bg: #101820;
+    --code-ink: #dbe6ef;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16, 24, 32, .05), 0 8px 24px rgba(16, 24, 32, .06);
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.75 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- layout ---------- */
+  .hero {
+    background: linear-gradient(135deg, #14251c 0%, #1f3d2d 55%, #2f6b4f 100%);
+    color: #eef5f0;
+    padding: 56px 40px 44px;
+  }
+  .hero .inner { max-width: 1180px; margin: 0 auto; }
+  .hero .kicker {
+    display: inline-block; padding: 4px 10px; border: 1px solid rgba(255,255,255,.28);
+    border-radius: 999px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: #cfe3d8;
+  }
+  .hero h1 { margin: 16px 0 8px; font-size: 34px; line-height: 1.25; letter-spacing: .01em; }
+  .hero p.sub { margin: 0; max-width: 760px; color: #c6d8cd; font-size: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .chip {
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18);
+    color: #e7f0ea; padding: 5px 11px; border-radius: 999px; font-size: 12.5px;
+  }
+  .chip b { color: #fff; font-weight: 600; }
+
+  .shell {
+    max-width: 1180px; margin: 0 auto; padding: 0 24px 80px;
+    display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 36px;
+  }
+  @media (max-width: 980px) {
+    .shell { grid-template-columns: 1fr; }
+    nav.toc { position: static !important; max-height: none !important; }
+    .hero { padding: 40px 24px 34px; }
+    .hero h1 { font-size: 26px; }
+  }
+  nav.toc {
+    position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto;
+    padding: 28px 0 20px; font-size: 13px;
+  }
+  nav.toc .label {
+    font-size: 11px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase;
+    margin: 0 0 10px 12px;
+  }
+  nav.toc a {
+    display: block; color: var(--muted); padding: 5px 12px; border-left: 2px solid transparent;
+    border-radius: 0 6px 6px 0;
+  }
+  nav.toc a:hover { color: var(--ink); background: #e9eef1; text-decoration: none; }
+  nav.toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  nav.toc a.sub { padding-left: 26px; font-size: 12.5px; }
+
+  main { padding-top: 34px; min-width: 0; }
+  section { margin: 0 0 46px; scroll-margin-top: 20px; }
+  h2 {
+    font-size: 23px; line-height: 1.35; margin: 0 0 6px; letter-spacing: .01em;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  h2 .num { color: var(--accent); font-family: var(--mono); font-size: 17px; margin-right: 8px; }
+  h3 { font-size: 17px; margin: 30px 0 10px; }
+  h4 { font-size: 14.5px; margin: 22px 0 8px; color: var(--muted); letter-spacing: .02em; }
+  p { margin: 10px 0; }
+  .lead { color: var(--muted); font-size: 15.5px; margin-top: 12px; }
+  ul, ol { margin: 10px 0; padding-left: 24px; }
+  li { margin: 5px 0; }
+  strong { color: #102018; }
+  code {
+    font-family: var(--mono); font-size: .88em; background: #eef1f4;
+    padding: 1px 5px; border-radius: 5px; color: #2c3a33;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 18px 20px; border-radius: var(--radius);
+    overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+    border: 1px solid #0a1016;
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  .comment { color: #7f9b8d; }
+  .kw { color: #8fbcd4; }
+
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 820px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .card h4 { margin-top: 0; color: var(--ink); }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  .card.green { border-top: 3px solid var(--accent); }
+  .card.amber { border-top: 3px solid var(--amber); }
+  .card.red { border-top: 3px solid var(--red); }
+  .card.blue { border-top: 3px solid var(--blue); }
+  .card .tiny { font-size: 12.5px; color: var(--muted); }
+
+  .callout {
+    border-radius: var(--radius); padding: 14px 18px; margin: 18px 0;
+    border: 1px solid var(--line); background: var(--panel); border-left: 4px solid var(--blue);
+  }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); border-color: #f0d9b3; }
+  .callout.danger { border-left-color: var(--red); background: var(--red-soft); border-color: #f3c7c2; }
+  .callout.ok { border-left-color: var(--accent); background: var(--accent-soft); border-color: #c8e0d2; }
+  .callout .title { font-weight: 700; margin-bottom: 4px; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; background: var(--panel); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #eef2f4; color: #33433a; font-weight: 600; font-size: 12.5px; letter-spacing: .02em; }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .table-wrap table { margin: 0; }
+  .table-wrap th, .table-wrap td { padding: 10px 14px; }
+
+  .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 18px 0; }
+  .pipe {
+    flex: 1 1 140px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; box-shadow: var(--shadow); position: relative; min-width: 130px;
+  }
+  .pipe .step { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .pipe .name { font-weight: 600; font-size: 13.5px; margin: 2px 0; }
+  .pipe .desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .pipe::after {
+    content: "→"; position: absolute; right: -13px; top: 50%; transform: translateY(-50%);
+    color: #9aa8b2; font-size: 15px; z-index: 1;
+  }
+  .pipe:last-child::after { display: none; }
+  @media (max-width: 820px) { .pipe::after { content: "↓"; right: 50%; top: auto; bottom: -14px; transform: translateX(50%); } }
+
+  .stack { display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin: 18px 0; }
+  .layer { display: grid; grid-template-columns: 150px 1fr; gap: 18px; padding: 14px 18px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .layer:last-child { border-bottom: none; }
+  .layer .tag { font-weight: 700; font-size: 13px; color: var(--accent); align-self: center; }
+  .layer .body { font-size: 13.5px; }
+  .layer .body .mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .mod { background: #f1f4f6; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-family: var(--mono); font-size: 11.5px; color: #34453b; }
+  .layer.ui { background: #fbfcfc; }
+  .layer.core { background: #f7faf8; }
+
+  .flow { display: grid; gap: 10px; margin: 18px 0; }
+  .flow-step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+  .flow-step .n {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 13px; margin-top: 2px;
+  }
+  .flow-step .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; box-shadow: var(--shadow); }
+  .flow-step .box b { font-size: 14px; }
+  .flow-step .box .d { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .flow-step .box ul { margin: 6px 0 0; font-size: 13px; }
+  .flow-step .box .br { color: var(--amber); font-size: 12.5px; margin-top: 5px; }
+
+  .svg-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); overflow-x: auto; margin: 18px 0; }
+  svg { display: block; max-width: 100%; height: auto; }
+  svg text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+
+  details {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0 16px; margin: 14px 0; box-shadow: var(--shadow);
+  }
+  details summary {
+    cursor: pointer; padding: 13px 0; font-weight: 600; font-size: 14px; color: #23372c;
+    list-style: none; display: flex; align-items: center; gap: 8px;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸"; color: var(--accent); font-size: 12px; transition: transform .15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details .inner { padding: 0 0 10px; }
+
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+  .badge.ok { background: #d9eee2; color: #1e5c3d; }
+  .badge.warn { background: #f8e6c6; color: #8a4b0f; }
+  .badge.off { background: #eceff2; color: #5b6876; }
+  .badge.red { background: #fadbd8; color: #8f2317; }
+
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0; }
+  @media (max-width: 820px) { .kpi { grid-template-columns: repeat(2, 1fr); } }
+  .kpi .k { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .kpi .v { font-size: 24px; font-weight: 700; color: var(--accent); font-family: var(--mono); line-height: 1.2; }
+  .kpi .l { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .hash { font-family: var(--mono); font-size: 12px; word-break: break-all; color: #3f5548; }
+  footer { border-top: 1px solid var(--line); padding: 26px 0 10px; color: var(--muted); font-size: 12.5px; }
+  .totop {
+    position: fixed; right: 22px; bottom: 22px; width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50;
+  }
+  .totop.show { opacity: 1; pointer-events: auto; }
+  .totop:hover { background: #24543e; text-decoration: none; }
+
+  @media print {
+    body { background: #fff; }
+    nav.toc, .totop { display: none; }
+    .shell { display: block; max-width: none; padding: 0; }
+    .hero { padding: 24px; }
+    .card, .table-wrap, .svg-wrap, details { box-shadow: none; break-inside: avoid; }
+    section { break-inside: auto; }
+    h2 { break-after: avoid; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="inner">
+    <span class="kicker">Architecture Design · v0.1.0</span>
+    <h1>特勤处收菜 · 架构设计文档</h1>
+    <p class="sub">
+      三角洲行动手游（<code style="background:rgba(255,255,255,.12);color:#eaf4ee;">com.tencent.tmgp.dfm</code>）特勤处
+      「收菜 → 补产 → 等待下一轮」外部 UI 自动化。基于无障碍截屏 + ML Kit 中文 OCR + 手势注入，
+      不读写内存、不修改封包、不注入进程。本文是实现的完整架构契约。
+    </p>
+    <div class="meta">
+      <span class="chip">版本 <b>0.1.0</b> (versionCode 1)</span>
+      <span class="chip">更新 <b>2026-11-21</b></span>
+      <span class="chip">JVM 单测 <b>126 通过</b></span>
+      <span class="chip">实机 <b>2712×1220</b></span>
+      <span class="chip">许可证 <b>GPL-3.0</b></span>
+      <span class="chip">APK <b>61 MB（debug）</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <div class="label">目录</div>
+    <a href="#s1" class="active">1 · 定位与边界</a>
+    <a href="#s2">2 · 目标与非目标</a>
+    <a href="#s3">3 · 实机事实与业务闭环</a>
+    <a href="#s4">4 · 系统上下文</a>
+    <a href="#s5">5 · 分层与依赖规则</a>
+    <a href="#s6">6 · 运行时模型</a>
+    <a href="#s7">7 · 状态机</a>
+    <a href="#s8" class="sub">7.1 自动化状态机</a>
+    <a href="#s9" class="sub">7.2 页面判定</a>
+    <a href="#s10" class="sub">7.3 部门状态</a>
+    <a href="#s11" class="sub">7.4 业务周期</a>
+    <a href="#s12">8 · 感知管线</a>
+    <a href="#s13">9 · 核心业务模块</a>
+    <a href="#s14" class="sub">9.1 轮巡收取</a>
+    <a href="#s15" class="sub">9.2 补产与列表扫描</a>
+    <a href="#s16" class="sub">9.3 补料流程（可选）</a>
+    <a href="#s17">10 · 配置与数据模型</a>
+    <a href="#s18">11 · 错误处理与重试</a>
+    <a href="#s19">12 · 安全设计</a>
+    <a href="#s20">13 · 性能预算</a>
+    <a href="#s21">14 · 测试与验证</a>
+    <a href="#s22">15 · 构建、安装与发布</a>
+    <a href="#s23">16 · 架构决策记录</a>
+    <a href="#s24">17 · 已知限制与路线图</a>
+  </nav>
+
+  <main>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="num">01</span>定位与边界</h2>
+      <p class="lead">
+        本项目是一个运行在 Android 设备上的「UI 宏」：它看到玩家能看到的界面，执行玩家能执行的点击，
+        并按玩家设定的生产计划循环。它不触碰游戏内部状态。
+      </p>
+      <div class="grid g3">
+        <div class="card green">
+          <h4>它做什么</h4>
+          <ul>
+            <li>截屏 + OCR 识别特勤处总览</li>
+            <li>识别四个部门的空闲 / 制造中 / 已完成</li>
+            <li>点开部门收取成品，按计划补充制造</li>
+            <li>计算剩余时间，定时唤醒下一轮</li>
+          </ul>
+        </div>
+        <div class="card blue">
+          <h4>它怎么做</h4>
+          <ul>
+            <li>AccessibilityService 截屏（API 30+）</li>
+            <li>ML Kit 中文 OCR（离线 bundled）</li>
+            <li>文字锚点优先，固定坐标为兜底</li>
+            <li>root shell / 无障碍手势 / dry-run 三种输入</li>
+          </ul>
+        </div>
+        <div class="card red">
+          <h4>它不做什么</h4>
+          <ul>
+            <li>不读游戏内存、不注解进程</li>
+            <li>不修改网络包、不伪造服务器请求</li>
+            <li>不做反检测 / 反作弊规避</li>
+            <li>不自动登录、出售、跑刀、对局、多开</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout danger">
+        <div class="title">合规提示</div>
+        <p>即使只做 UI 自动化，仍可能违反游戏用户协议并触发行为检测，存在封号风险。
+        本项目不承诺账号安全，也不提供任何规避手段。使用风险自负。</p>
+      </div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="s2">
+      <h2><span class="num">02</span>目标与非目标</h2>
+      <div class="grid g2">
+        <div class="card green">
+          <h4>设计目标</h4>
+          <ul>
+            <li><b>安全第一</b>：任何不确定状态停止，不盲点；所有动作可审计。</li>
+            <li><b>鲁棒感知</b>：OCR 文字锚点优先，兼容分辨率、刘海与模拟器差异。</li>
+            <li><b>可测试</b>：业务核心纯 Kotlin，不依赖 Android API，可 JVM 单测。</li>
+            <li><b>可恢复</b>：断点续跑，失败不消耗计划次数，页面异常可回总览。</li>
+            <li><b>可离线</b>：不联网、不上传截图，配置与日志都在应用私有目录。</li>
+          </ul>
+        </div>
+        <div class="card amber">
+          <h4>v0.1 非目标</h4>
+          <ul>
+            <li>自动登录、自动出售、自动跑刀、自动对局、多开。</li>
+            <li>内存读写、封包修改、进程注入、反检测/反作弊规避。</li>
+            <li>iOS 客户端；PC 版为第二优先级（<code>pc/</code> 目前仅接口骨架）。</li>
+            <li>自动买材料默认关闭；手游交易行流程验证后再评估。</li>
+            <li>无签名 release 渠道、应用商店分发。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="s3">
+      <h2><span class="num">03</span>实机事实与业务闭环</h2>
+      <p class="lead">以下 UI 事实已在 Redmi 2312DRA50C（HyperOS V816，横屏 2712×1220）上确认，
+      与 PC 端参考实现（DeltaForceSS）的交互模型差异很大。</p>
+
+      <div class="grid g2">
+        <div class="card">
+          <h4>已确认的界面元素</h4>
+          <ul>
+            <li>总览四卡片：技术中心 / 防具台 / 工作台 / 制药台，位置固定。</li>
+            <li>制造完成的卡片<b>没有「完成/收取」文字</b>，只有物品图 + 右上角黄色「!」角标。</li>
+            <li>点击部门标题进入的是「XX升级」页，不是物品列表。</li>
+            <li>「XX升级」页点「前往生产」才进入「左列表 + 右详情」生产页。</li>
+            <li>生产页收取按钮文字为「收获」。</li>
+            <li>材料不足时底部按钮显示「一键补齐」。</li>
+            <li>生产页/升级页<b>不响应安卓返回键</b>；左上角页面内箭头可逐级返回，生产页需连点两次。</li>
+            <li>仓库满时点「收获」只弹「仓库空间不足」toast，按钮仍在、物品不入账。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>由此产生的三个关键适配</h4>
+          <ul>
+            <li><b>角标判定</b>：OCR 判不出 DONE，改用像素颜色 + 连通域检测黄色「!」。</li>
+            <li><b>固定分区轮巡</b>：不依赖状态文字，直接按固定顺序点开四个部门看有没有可收物品。</li>
+            <li><b>两级导航</b>：部门标题 →「前往生产」→ 列表；收取按钮是「收获」。</li>
+          </ul>
+          <p class="tiny">对应 ADR：D033、D034、D035、D037。</p>
+        </div>
+      </div>
+
+      <h3>业务闭环</h3>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="n">1</div>
+          <div class="box">
+            <b>前台校验</b>
+            <div class="d">读取前台包名，必须为 <code>com.tencent.tmgp.dfm</code>；否则本轮中止（不终止会话）。</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="n">2</div>
+          <div class="box">
+            <b>截屏 + 全屏 OCR</b>
+            <div class="d">AccessibilityService 截图 → ML Kit 中文识别 → 文字与包围盒；判页并定位四个部门标题。</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="n">3</div>
+          <div class="box">
+            <b>状态判定</b>
+            <div class="d">状态文字只归属给位于其<b>上方</b>的标题锚点（防串行）；黄色角标 → DONE。</div>
+            <ul>
+              <li>空闲中 → <code>IDLE</code></li>
+              <li>HH:MM:SS → <code>CRAFTING(remainingSec)</code></li>
+              <li>收取 / 领取 / 完成 → <code>DONE</code></li>
+              <li>无状态文字 → <code>UNKNOWN</code>（绝不当作 DONE）</li>
+            </ul>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="n">4</div>
+          <div class="box">
+            <b>轮巡收取（sweepDepartments，默认开启）</b>
+            <div class="d">按 技术中心 → 防具台 → 工作台 → 制药台 依次点进部门：</div>
+            <ul>
+              <li>页面上有 收取/领取/收获 → 直接点；</li>
+              <li>是「XX升级」页 → 前往生产 → 生产页点「收获」；</li>
+              <li>没有可收物品 → 返回总览；制造中的部门跳过。</li>
+            </ul>
+            <div class="br">轮巡收不到不算失败、不进入冷却。</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="n">5</div>
+          <div class="box">
+            <b>按计划补产</b>
+            <div class="d">部门空闲且有计划 → 进入生产列表 → 左侧视口模糊匹配目标物品 → 点击 → 校验右侧详情标题 → 开始制造 → 验证按钮消失 → 返回总览。</div>
+            <div class="br">材料不足：默认放弃；开启 autoBuyMaterials 后才走补料确认流程。</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="n">6</div>
+          <div class="box">
+            <b>计算下次唤醒</b>
+            <div class="d">重新观察状态，取最小剩余时间 + 30s 缓冲；有可收/可造物品则立即进入下一轮。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="s4">
+      <h2><span class="num">04</span>系统上下文</h2>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 940 380" role="img" aria-label="系统上下文图：App 通过无障碍截屏与手势和游戏交互">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6876"/>
+            </marker>
+            <marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6b4f"/>
+            </marker>
+          </defs>
+
+          <rect x="24" y="40" width="300" height="300" rx="14" fill="#fbfcfc" stroke="#d7dee3"/>
+          <text x="174" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#1b2430">Android 设备 / 模拟器</text>
+
+          <rect x="52" y="98" width="244" height="92" rx="10" fill="#fdf3e3" stroke="#e6c796"/>
+          <text x="174" y="126" text-anchor="middle" font-size="13" font-weight="700" fill="#7a430c">三角洲行动手游</text>
+          <text x="174" y="147" text-anchor="middle" font-size="11" fill="#8a6a3a" font-family="Consolas, monospace">com.tencent.tmgp.dfm</text>
+          <text x="174" y="169" text-anchor="middle" font-size="11" fill="#8a6a3a">特勤处总览 · 生产页</text>
+
+          <rect x="52" y="222" width="244" height="92" rx="10" fill="#e8f2ec" stroke="#b9d6c5"/>
+          <text x="174" y="250" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4d37">sjz App（本项目）</text>
+          <text x="174" y="271" text-anchor="middle" font-size="11" fill="#3f6b54">前台服务 · 无障碍服务 · OCR</text>
+          <text x="174" y="292" text-anchor="middle" font-size="11" fill="#3f6b54">不联网 · 不上传截图</text>
+
+          <line x1="174" y1="190" x2="174" y2="220" stroke="#5b6876" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="184" y="211" font-size="10.5" fill="#5b6876">界面变化</text>
+
+          <rect x="420" y="40" width="496" height="300" rx="14" fill="#f7f9fa" stroke="#d7dee3"/>
+          <text x="668" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#1b2430">sjz App 内部</text>
+
+          <rect x="446" y="88" width="200" height="66" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="546" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">AutomationController</text>
+          <text x="546" y="132" text-anchor="middle" font-size="10.5" fill="#5b6876">协程 · 状态机 · 通知</text>
+
+          <rect x="676" y="88" width="214" height="66" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="783" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">HarvestFlow</text>
+          <text x="783" y="132" text-anchor="middle" font-size="10.5" fill="#5b6876">单周期编排 · 纯 Kotlin</text>
+
+          <rect x="446" y="178" width="200" height="66" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="546" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">Observer / Crafter</text>
+          <text x="546" y="222" text-anchor="middle" font-size="10.5" fill="#5b6876">接口 · 可替换假实现</text>
+
+          <rect x="676" y="178" width="214" height="66" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="783" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">ScreenOcr</text>
+          <text x="783" y="222" text-anchor="middle" font-size="10.5" fill="#5b6876">截屏 + OCR + 回收 Bitmap</text>
+
+          <rect x="446" y="268" width="200" height="52" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="546" y="290" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">AccessibilityService</text>
+          <text x="546" y="307" text-anchor="middle" font-size="10.5" fill="#5b6876">截图 · 手势 · 前台包名</text>
+
+          <rect x="676" y="268" width="214" height="52" rx="9" fill="#ffffff" stroke="#cfd8de"/>
+          <text x="783" y="290" text-anchor="middle" font-size="12" font-weight="600" fill="#1b2430">ML Kit 中文 OCR</text>
+          <text x="783" y="307" text-anchor="middle" font-size="10.5" fill="#5b6876">bundled · 离线 · 串行</text>
+
+          <line x1="646" y1="121" x2="674" y2="121" stroke="#2f6b4f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+          <line x1="783" y1="154" x2="783" y2="176" stroke="#2f6b4f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+          <line x1="646" y1="211" x2="674" y2="211" stroke="#2f6b4f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+          <line x1="546" y1="244" x2="546" y2="266" stroke="#2f6b4f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+          <line x1="783" y1="244" x2="783" y2="266" stroke="#2f6b4f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+
+          <line x1="446" y1="294" x2="300" y2="294" stroke="#5b6876" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="300" y1="330" x2="446" y2="330" stroke="#5b6876" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="370" y="285" text-anchor="middle" font-size="10.5" fill="#5b6876">手势注入</text>
+          <text x="370" y="348" text-anchor="middle" font-size="10.5" fill="#5b6876">截图 / 前台包名</text>
+        </svg>
+      </div>
+      <p class="lead">
+        所有进出都发生在 Android 框架层：App 只能看到屏幕像素与前台包名，只能发出触摸手势。
+        没有网络链路，也没有跨进程内存访问。
+      </p>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="s5">
+      <h2><span class="num">05</span>分层与依赖规则</h2>
+      <p class="lead">依赖只能向下。业务层只认识接口，具体实现由 <code>AutomationController</code> 注入。</p>
+
+      <div class="stack">
+        <div class="layer ui">
+          <div class="tag">UI 层</div>
+          <div class="body">
+            Compose / Activity 界面：主界面、生产计划、校准、设置
+            <div class="mods"><span class="mod">MainActivity</span><span class="mod">PlanActivity</span><span class="mod">CalibrationActivity</span><span class="mod">SettingsActivity</span></div>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">编排层</div>
+          <div class="body">
+            会话生命周期、协程、暂停/停止、通知栏控制
+            <div class="mods"><span class="mod">AutomationController</span><span class="mod">AutomationForegroundService</span><span class="mod">ControlReceiver</span></div>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">业务层</div>
+          <div class="body">
+            单向业务周期、页面/部门状态解析、点击流程、计划与调度
+            <div class="mods"><span class="mod">HarvestFlow</span><span class="mod">ObserverImpl</span><span class="mod">CraftingController</span><span class="mod">DashboardStatusResolver</span><span class="mod">PlanStore</span><span class="mod">Scheduler</span></div>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">能力层</div>
+          <div class="body">
+            截屏、OCR、输入后端的抽象与 Android 实现
+            <div class="mods"><span class="mod">ScreenSource</span><span class="mod">OcrEngine / MlKitOcrEngine</span><span class="mod">InputController</span><span class="mod">RootShellInput</span><span class="mod">AccessibilityGestureInput</span><span class="mod">DryRunInput</span></div>
+          </div>
+        </div>
+        <div class="layer core">
+          <div class="tag">基础层</div>
+          <div class="body">
+            纯 Kotlin 模型、几何、配置 schema、日志、异常
+            <div class="mods"><span class="mod">core.model</span><span class="mod">core.config</span><span class="mod">Geometry</span><span class="mod">TextParser</span><span class="mod">LogBus</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>硬性依赖规则</h3>
+      <div class="grid g2">
+        <div class="card green">
+          <h4>允许</h4>
+          <ul>
+            <li><code>core.model</code>、<code>core.config</code>（模型部分）、<code>TextParser</code>、<code>Scheduler</code>、<code>HarvestFlow</code> 只依赖 Kotlin 标准库。</li>
+            <li>业务层依赖 <code>Observer</code> / <code>Crafter</code> / <code>PlanRepository</code> / <code>InputController</code> / <code>OcrEngine</code> / <code>ScreenSource</code> 接口。</li>
+            <li>只有 <code>service</code> / <code>ui</code> / <code>capture</code> / <code>input</code> / <code>vision/MlKitOcrEngine</code> 可以触碰 Android API。</li>
+          </ul>
+        </div>
+        <div class="card red">
+          <h4>禁止</h4>
+          <ul>
+            <li>业务层直接调用 <code>AccessibilityService</code>。</li>
+            <li>业务层执行 <code>Runtime.exec("su")</code>。</li>
+            <li>业务层直接持有 <code>Bitmap</code>（统一走 <code>OcrSnapshot</code>）。</li>
+            <li>在点击未确认成功后盲目重试点击。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="s6">
+      <h2><span class="num">06</span>运行时模型</h2>
+
+      <h3>进程与服务</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组件</th><th>职责</th><th>关键点</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>SjzAccessibilityService</code></td>
+              <td>系统绑定的无障碍服务，常驻</td>
+              <td>暴露 <code>instance: StateFlow</code>；提供 <code>takeScreenshot()</code>、<code>dispatchGesture()</code>、<code>foregroundPackage()</code></td>
+            </tr>
+            <tr>
+              <td><code>AutomationForegroundService</code></td>
+              <td>会话期间的 <code>specialUse</code> 前台服务</td>
+              <td>防止 MIUI / HyperOS 冻结后台进程；与 Controller 共用通知 ID</td>
+            </tr>
+            <tr>
+              <td><code>AutomationController</code></td>
+              <td>单例状态机与协程调度</td>
+              <td><code>start/pause/resume/stop</code>；<code>StateFlow&lt;AutomationUiState&gt;</code>；每轮调用 <code>HarvestFlow.runCycle()</code></td>
+            </tr>
+            <tr>
+              <td><code>ControlReceiver</code></td>
+              <td>通知栏动作广播</td>
+              <td>暂停 / 继续 / 停止，无需悬浮窗权限</td>
+            </tr>
+            <tr>
+              <td><code>MainActivity</code></td>
+              <td>前台界面</td>
+              <td>绑定状态流；退到后台不影响自动化</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>线程与协程</h3>
+      <ul>
+        <li>截屏、OCR、root 命令走 <code>Dispatchers.IO</code>；业务循环单线程顺序执行，不做并发点击。</li>
+        <li><code>takeScreenshot</code> / <code>dispatchGesture</code> 回调在主线程，包装为 <code>suspendCancellableCoroutine</code>。</li>
+        <li>ML Kit recognizer 非线程安全，用 <code>Mutex</code> 串行化。</li>
+        <li>截屏串行且最小间隔 400ms，避开系统 <code>ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT</code>（约 333ms）。</li>
+        <li>暂停用 <code>CompletableDeferred</code> / <code>Mutex</code> 阻塞在轮次之间；停止用 <code>Job.cancel()</code> + 标志位。</li>
+      </ul>
+
+      <h3>生命周期</h3>
+      <pre><code>用户点开始
+  → 检查无障碍服务已连接（否则提示去系统设置）
+  → 加载配置（app / profile / catalog / plan）
+  → 选择输入后端（auto: root → accessibility → 报错）
+  → 启动前台服务，通知栏显示「运行中」
+  → loop:
+       检查暂停 / 停止 / 安全限制 / 前台包名
+       flow.runCycle()
+       记录 nextWakeAt
+       delay(nextWakeSec)
+  → 停止：取消协程、回收 OCR、停止前台服务、更新通知</code></pre>
+      <p>无障碍服务被系统关闭时，Controller 监听 <code>instance == null</code>，停止循环并提示用户。</p>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="s7">
+      <h2><span class="num">07</span>状态机</h2>
+
+      <h3 id="s8">7.1 自动化状态机</h3>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 880 250" role="img" aria-label="自动化状态机">
+          <defs>
+            <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6876"/>
+            </marker>
+          </defs>
+          <rect x="40" y="95" width="130" height="52" rx="26" fill="#eef2f4" stroke="#b9c4cb"/>
+          <text x="105" y="127" text-anchor="middle" font-size="14" font-weight="700" fill="#33433a">IDLE</text>
+
+          <rect x="270" y="95" width="150" height="52" rx="26" fill="#e8f2ec" stroke="#86b89c"/>
+          <text x="345" y="127" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4d37">RUNNING</text>
+
+          <rect x="520" y="95" width="140" height="52" rx="26" fill="#fdf3e3" stroke="#e0b877"/>
+          <text x="590" y="127" text-anchor="middle" font-size="14" font-weight="700" fill="#7a430c">PAUSED</text>
+
+          <rect x="720" y="40" width="130" height="46" rx="23" fill="#fdecea" stroke="#e2a49c"/>
+          <text x="785" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#8f2317">ERROR</text>
+
+          <rect x="720" y="156" width="130" height="46" rx="23" fill="#eef2f4" stroke="#b9c4cb"/>
+          <text x="785" y="184" text-anchor="middle" font-size="13" font-weight="700" fill="#33433a">STOPPED</text>
+
+          <line x1="170" y1="121" x2="268" y2="121" stroke="#5b6876" stroke-width="1.6" marker-end="url(#m2)"/>
+          <text x="219" y="112" text-anchor="middle" font-size="11" fill="#5b6876">start</text>
+
+          <line x1="420" y1="112" x2="518" y2="112" stroke="#5b6876" stroke-width="1.6" marker-end="url(#m2)"/>
+          <text x="469" y="103" text-anchor="middle" font-size="11" fill="#5b6876">pause</text>
+
+          <path d="M 540 95 C 500 45, 430 45, 380 93" fill="none" stroke="#5b6876" stroke-width="1.6" marker-end="url(#m2)"/>
+          <text x="462" y="52" text-anchor="middle" font-size="11" fill="#5b6876">resume</text>
+
+          <line x1="420" y1="130" x2="718" y2="167" stroke="#5b6876" stroke-width="1.6" marker-end="url(#m2)"/>
+          <text x="560" y="160" text-anchor="middle" font-size="11" fill="#5b6876">stop / safety limit</text>
+
+          <line x1="660" y1="105" x2="718" y2="70" stroke="#b42318" stroke-width="1.6" marker-end="url(#m2)"/>
+          <text x="706" y="101" text-anchor="middle" font-size="11" fill="#b42318">error</text>
+        </svg>
+      </div>
+      <p>状态字段：<code>running</code>、<code>paused</code>、<code>phase</code>、<code>lastMessage</code>、
+      <code>nextWakeAtMs</code>、<code>cycleCount</code>、<code>lastObservation</code>。</p>
+
+      <h3 id="s9">7.2 页面判定</h3>
+      <p>输入全屏 OCR 文字与包围盒，按以下<b>顺序</b>判定（顺序本身是契约）：</p>
+      <div class="pipeline">
+        <div class="pipe"><div class="step">1</div><div class="name">制造面板</div><div class="desc">命中「开始制造」等具体按钮，或材料锚点相似度 ≥90</div></div>
+        <div class="pipe"><div class="step">2</div><div class="name">交易行</div><div class="desc">至少 2 个交易行锚点（交易行 + 最低价）</div></div>
+        <div class="pipe"><div class="step">3</div><div class="name">总览</div><div class="desc">≥2 个部门标题；单标题需邻域出现状态词/计时器</div></div>
+        <div class="pipe"><div class="step">4</div><div class="name">部门页</div><div class="desc">文字元素 ≥6 且不满足以上条件</div></div>
+        <div class="pipe"><div class="step">5</div><div class="name">未知</div><div class="desc">UNKNOWN → 禁止点击</div></div>
+      </div>
+      <div class="callout">
+        <div class="title">为什么顺序重要</div>
+        <p>制造面板里也可能出现「制造」二字，所以先用更具体的「开始制造」/材料锚点；
+        详情页通常只有一个部门标题，单标题不能直接判总览，否则补产会停在详情页而不是进入列表。
+        主界面底部导航含「交易行」三字，单锚点会把大厅误判成交易行，因此要求 ≥2 锚点。</p>
+      </div>
+
+      <h3 id="s10">7.3 部门状态解析</h3>
+      <p>集中在纯 Kotlin 的 <code>DashboardStatusResolver</code>，可在 JVM 单测：</p>
+      <ol>
+        <li>四个部门标题作为锚点；漏识别时先按 2×2 卡片网格（同行/同列已知标题）推断，仍失败才用 <code>departmentAnchorPoints</code> 归一化兜底。</li>
+        <li>每个 OCR 元素只归属最近的部门锚点，并限制在 <code>statusSearchRadiusPx × widthFactor</code> 半径内。</li>
+        <li><b>关键约束</b>：状态文字只归属给<b>位于文字上方</b>的标题；上方无锚点才退回全局最近锚点。</li>
+        <li>状态优先级：<code>idleKeywords</code> → IDLE；计时器正则 → CRAFTING(剩余秒)；<code>craftingKeywords</code> → CRAFTING；<code>doneKeywords</code> → DONE；其余 UNKNOWN。</li>
+        <li>黄色角标由 <code>AlertBadgeDetector</code> 检测，并按「标题右侧 dx/dy 窗口」归属部门。</li>
+      </ol>
+      <div class="grid g2">
+        <div class="callout warn" style="margin:0">
+          <div class="title">为什么状态只归属上方标题</div>
+          <p>2712×1220 上排卡片的「空闲中」在垂直方向上反而更靠近下排标题；
+          按最近锚点会把技术中心的状态串给制药台（实机 dry-run 曾出现）。修复后通过实机验证。</p>
+        </div>
+        <div class="callout ok" style="margin:0">
+          <div class="title">为什么角标不能用最近锚点</div>
+          <p>完成角标常更靠近相邻卡片的标题；必须用「标题右上方窗口」筛选。
+          左侧升级栏的角标 dx&lt;0，右侧设施列表的角标 dx 过大，均被排除。</p>
+        </div>
+      </div>
+
+      <h3 id="s11">7.4 业务周期</h3>
+      <pre><code>runCycle():
+  obs = observer.observe()          <span class="comment">// GameNotForeground → 本轮中止，不终止会话</span>
+  if obs.page != DASHBOARD:
+      tryRecoverToDashboard()       <span class="comment">// 最多 2 次；主界面点「特勤处」，不盲按返回</span>
+
+  order = if (sweep) sweepOrder() else Dept.entries
+  for dept in order:
+      status = obs.status(dept)
+      sweepCollect = sweep && status.state != CRAFTING
+      if status.state == DONE or sweepCollect:
+          crafter.collect(dept)     <span class="comment">// 轮巡失败不冷却；DONE 失败进入冷却</span>
+          refresh dashboard         <span class="comment">// 收菜后必须重新观察状态</span>
+      if status.state == IDLE and plan.hasNext(dept):
+          outcome = crafter.craft(dept, plan.next(dept))
+          if outcome == SUCCESS: plan.consume(dept); persist()
+
+  obs2 = observer.observe()
+  next = Scheduler.nextWakeSec(obs2, plan, buffer)
+  return CycleResult(...)</code></pre>
+      <ul>
+        <li>收菜与补产可能连续发生；收菜后重新判空闲，不能沿用旧状态。</li>
+        <li>单部门失败不阻塞其他部门；页面异常 / 前台异常立即中止整轮。</li>
+        <li>失败部门进入 <code>failureBackoffSec</code>（默认 300s）冷却；仅冷却导致无唤醒时，推迟到冷却结束。</li>
+        <li><code>craft</code> 必须确认制造面板已关闭才算 SUCCESS；只有 SUCCESS 消费计划。</li>
+        <li>整轮未知或四部门全 UNKNOWN 累计到 <code>maxConsecutiveUnknownCycles</code>（默认 3）停止。</li>
+        <li>每轮动作数超过 <code>maxActionsPerCycle</code>（默认 80）→ SafetyLimitReached。</li>
+      </ul>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="s12">
+      <h2><span class="num">08</span>感知管线</h2>
+      <p class="lead">从一块屏幕像素到「四个部门各是什么状态」，全部是可替换接口 + 纯函数。</p>
+      <div class="pipeline">
+        <div class="pipe"><div class="step">01</div><div class="name">Frame</div><div class="desc">无障碍截屏，ARGB_8888 软件位图，全黑检测</div></div>
+        <div class="pipe"><div class="step">02</div><div class="name">OcrSnapshot</div><div class="desc">ML Kit 中文文字 + 包围盒；Bitmap 立即回收</div></div>
+        <div class="pipe"><div class="step">03</div><div class="name">PageDetector</div><div class="desc">总览 / 部门 / 制造 / 交易行 / 未知</div></div>
+        <div class="pipe"><div class="step">04</div><div class="name">Resolver</div><div class="desc">标题锚点 + 网格推断 + 状态文字归属</div></div>
+        <div class="pipe"><div class="step">05</div><div class="name">BadgeDetector</div><div class="desc">黄色「!」像素采样 + 连通域</div></div>
+        <div class="pipe"><div class="step">06</div><div class="name">Observation</div><div class="desc">DeptStatus(tech/work/medical/armor)</div></div>
+      </div>
+
+      <h3>像素角标检测</h3>
+      <p><code>AlertBadgeDetector</code> 是完全的纯 Kotlin 实现，输入 <code>IntArray</code> 像素与尺寸，不依赖 Android：</p>
+      <ul>
+        <li>目标颜色 <b>RGB(244, 207, 103)</b>，容差 28；卡片金色描边约 (200,168,80)，不会命中。</li>
+        <li>步长 2px 采样，单个色块至少 16 个命中；外接框最大 80px，过滤大片金色图片/描边。</li>
+        <li>按「标题锚点右侧 dx ∈ [90, 320]、垂直偏移 ≤ 180」窗口归属部门（基准 1920，按宽度缩放）。</li>
+      </ul>
+
+      <h3>OCR 与文本解析</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h4>MlKitOcrEngine</h4>
+          <ul>
+            <li>bundled 中文模型，离线、不依赖 Google Play 服务。</li>
+            <li>宽度 &lt;1600 时 2× 放大提升小字识别；坐标除以放大倍数还原。</li>
+            <li>串行 <code>Mutex</code>；失败重试 <code>ocrRetries</code> 次后返回空结果并记录。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>TextParser（纯 Kotlin）</h4>
+          <ul>
+            <li><code>parseTimer</code> / <code>parsePrice</code> / <code>isIdle</code> / <code>isDone</code></li>
+            <li><code>normalize</code>：去空白标点，应用 OCR 纠错（如 番→盔）</li>
+            <li><code>similarity</code>：归一化 Levenshtein 比率 0..100</li>
+            <li><code>bestMatch</code>：按部门阈值返回最佳物品候选</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="s13">
+      <h2><span class="num">09</span>核心业务模块</h2>
+
+      <h3 id="s14">9.1 轮巡收取（sweepDepartments）</h3>
+      <p><code>HarvestFlow</code> 在每轮开头读取 <code>profile.dashboard.sweepOrder</code>，
+      默认顺序 <b>技术中心 → 防具台 → 工作台 → 制药台</b>。对每个部门：</p>
+      <ul>
+        <li>状态为 <code>CRAFTING</code> 时跳过（一定没有可收物品）。</li>
+        <li>否则点开部门，执行 <code>CraftingController.collect(dept)</code>：
+          <ol>
+            <li>当前页找「收取 / 领取 / 收获」→ 点击；</li>
+            <li>是「XX升级」页 → 点「前往生产」→ 生产页找「收获」→ 点击；</li>
+            <li>都没有 → 返回总览。</li>
+          </ol>
+        </li>
+        <li>收不到物品<b>不算失败</b>、不进入冷却；只有状态判定为 DONE 且收取失败才记失败。</li>
+        <li>总览标题漏识别时，仅在 <code>Page.DASHBOARD</code> 页使用 <code>departmentAnchorPoints</code> 固定点进入。</li>
+      </ul>
+      <div class="callout ok">
+        <div class="title">为什么默认开启</div>
+        <p>实机完成卡片只有角标、没有文字，OCR 漏检或颜色偏差都会让状态停在 UNKNOWN。
+        固定分区轮巡是有界操作（每轮最多 4 次），点的是实机标定过的卡片位置，比纯状态识别更可靠。</p>
+      </div>
+
+      <h3 id="s15">9.2 补产与列表扫描</h3>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="n">1</div>
+          <div class="box"><b>进入生产页</b><div class="d">点部门标题 → 等待 → 若是「XX升级」页则点「前往生产」→ 确认进入「左列表 + 右详情」。</div></div>
+        </div>
+        <div class="flow-step">
+          <div class="n">2</div>
+          <div class="box"><b>点击列表第一行（默认）</b><div class="d">玩家把目标物品置顶后，直接点归一化固定点 <code>itemList.firstRowPoint</code>（0.17/0.239）；不按物品名扫描、不滚动。旧模式（<code>firstRowSelect=false</code>）才在 <code>itemList.viewport</code> 内做模糊匹配。</div></div>
+        </div>
+        <div class="flow-step">
+          <div class="n">3</div>
+          <div class="box"><b>OCR 预审</b><div class="d">第一行模式不依赖 OCR 选择物品；点完后读右侧 <code>detailRegion</code> 标题：读到且不是计划物品 → 中止；读不到 → 告警但继续。旧扫描模式仍用「首行不变」判到底。</div></div>
+        </div>
+        <div class="flow-step">
+          <div class="n">4</div>
+          <div class="box"><b>校验详情</b><div class="d">详情标题匹配目标才允许点「开始制造」；不匹配则停止，绝不误造上一件。</div></div>
+        </div>
+        <div class="flow-step">
+          <div class="n">5</div>
+          <div class="box"><b>材料与开始制造</b><div class="d">看到「一键补齐」= 材料不足（默认返回 MISSING_MATERIALS）；否则找「开始制造」并点击。</div></div>
+        </div>
+        <div class="flow-step">
+          <div class="n">6</div>
+          <div class="box"><b>验证成功</b><div class="d">等待后确认「开始制造」按钮消失 / 面板关闭；只有确认关闭才返回 SUCCESS 并消费计划。</div></div>
+        </div>
+      </div>
+      <p>各物品相似度阈值：<b>tech 71 / work 96 / medical 80 / armor 80</b>（来自实机 OCR 调参，见 DeltaForceSS 参考）。</p>
+
+      <h3 id="s16">9.3 补料流程（可选，默认关闭）</h3>
+      <p>移植自 DeltaForceSS 的补料确认逻辑，但加了更严格的手游安全检查。
+      仅在 <code>safety.autoBuyMaterials=true</code> 时执行；默认配置下<b>永不点击「一键补齐」</b>。</p>
+      <pre><code><span class="kw">if</span> (findFillButton(snap) != null) {
+    <span class="kw">if</span> (!safety.autoBuyMaterials) <span class="kw">return</span> CraftOutcome.MISSING_MATERIALS
+
+    tap(fillButton)
+    <span class="kw">if</span> (page == AUCTION) buyMaterials()          <span class="comment">// 交易行路径，同样受单价限制</span>
+    <span class="kw">else</span> {
+        <span class="comment">// 必须同时识别到价格 + 确认按钮，且单价 ≤ auction.maxUnitPrice</span>
+        <span class="kw">if</span> (findAnyPrice(snap) == null) <span class="kw">return</span> MISSING_MATERIALS
+        <span class="kw">if</span> (price > auction.maxUnitPrice && maxUnitPrice > 0) <span class="kw">return</span> MISSING_MATERIALS
+        tap(findFillConfirmButton(snap))
+        finishAfterFill()                        <span class="comment">// 补齐后仍缺 → 放弃</span>
+    }
+}</code></pre>
+      <div class="grid g3">
+        <div class="card green"><h4>价格守卫</h4><p class="tiny">识别到价格且不超过 <code>maxUnitPrice</code> 才确认；0 表示不限。</p></div>
+        <div class="card green"><h4>按钮守卫</h4><p class="tiny">确认按钮必须与补齐按钮不同位置、不同文字，模糊阈值 90。</p></div>
+        <div class="card green"><h4>结果守卫</h4><p class="tiny">补料后必须看到制造面板且无补齐按钮，才继续「开始制造」。</p></div>
+      </div>
+      <div class="callout warn">
+        <div class="title">尚未实机验证</div>
+        <p>手游补料确认页的真实布局与按钮文字尚未在设备上走通；因此默认保持关闭。
+        开启前请先手动确认交易行单价与确认页结构。</p>
+      </div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section id="s17">
+      <h2><span class="num">10</span>配置与数据模型</h2>
+      <p class="lead">四个 JSON 文件放在 assets，首次启动复制到 <code>filesDir/config/</code>；
+      之后读内部存储，支持在 App 内编辑与恢复默认。所有字段带默认值，旧配置缺字段仍可加载。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>文件</th><th>作用</th><th>什么时候改</th></tr></thead>
+          <tbody>
+            <tr><td><code>app_config.json</code></td><td>包名、输入后端、截屏间隔、时序、安全、日志</td><td>换模拟器 / 调速度 / 开 dry-run / 开自动买材料</td></tr>
+            <tr><td><code>profile.json</code></td><td>基准分辨率、OCR 锚点、列表视口、按钮文字、阈值、角标参数</td><td>赛季 UI 大改 / OCR 误判 / 换分辨率</td></tr>
+            <tr><td><code>catalog.json</code></td><td>部门 → 分类 → 物品名 + OCR 别名</td><td>新赛季新增物品</td></tr>
+            <tr><td><code>plan.json</code></td><td>每个部门造什么、造几个</td><td>玩家生产计划（App 内可编辑）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>关键配置项</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>字段</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>safety.sweepDepartments</code></td><td><span class="badge ok">true</span></td><td>固定分区轮巡收取；制造中部门跳过，收不到不冷却</td></tr>
+            <tr><td><code>dashboard.sweepOrder</code></td><td>tech → armor → work → medical</td><td>轮巡顺序；缺项自动补末尾</td></tr>
+            <tr><td><code>dashboard.doneBadge</code></td><td>RGB(244,207,103) / 容差 28</td><td>黄色「!」完成角标检测与部门归属</td></tr>
+            <tr><td><code>dashboard.doneWhenNoStatus</code></td><td><span class="badge off">false</span></td><td>无状态文字是否按完成处理；默认关闭，宁可 UNKNOWN</td></tr>
+            <tr><td><code>dashboard.collectButtonTexts</code></td><td>收取 / 领取 / 收获</td><td>仅用于点击；实机生产页是「收获」</td></tr>
+            <tr><td><code>dashboard.collectBlockedTexts</code></td><td>仓库空间不足 / 仓库已满 / 背包已满 / 无法收取</td><td>点击收取后 500ms 检查 toast；命中即返回失败，不误报成功</td></tr>
+            <tr><td><code>dashboard.departmentBackPoint</code></td><td>(0.0376, 0.0951)</td><td>部门页/生产页左上角页面内返回箭头；安卓返回键在这些页面无效，生产页需连点两次</td></tr>
+            <tr><td><code>craft.productionButtonTexts</code></td><td>前往生产</td><td>「XX升级」页进入生产页的按钮</td></tr>
+            <tr><td><code>safety.autoBuyMaterials</code></td><td><span class="badge off">false</span></td><td>自动买材料 / 补齐；涉及真实资产</td></tr>
+            <tr><td><code>craft.fillConfirmTexts</code></td><td>确认购买 / 确认补齐 / 购买 / 确认 / 确定</td><td>补齐确认页按钮；必须同时识别到价格</td></tr>
+            <tr><td><code>auction.maxUnitPrice</code></td><td>0</td><td>自动买材料单价上限；0 = 不限</td></tr>
+            <tr><td><code>timing.failureBackoffSec</code></td><td>300</td><td>单部门失败冷却；0 = 不冷却</td></tr>
+            <tr><td><code>safety.maxActionsPerCycle</code></td><td>80</td><td>每轮点击/滑动上限</td></tr>
+            <tr><td><code>safety.maxConsecutiveUnknownCycles</code></td><td>3</td><td>连续全未知周期上限；0 = 不限</td></tr>
+            <tr><td><code>capture.minIntervalMs</code></td><td>400</td><td>截屏最小间隔（系统限制约 333ms）</td></tr>
+            <tr><td><code>thresholds.itemSimilarity</code></td><td>tech 71 / work 96 / medical 80 / armor 80</td><td>物品名模糊匹配阈值</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>生产计划的消费语义</h3>
+      <div class="grid g3">
+        <div class="card"><h4><code>count = -1</code></h4><p>无限循环，成功后计数不变。</p></div>
+        <div class="card"><h4><code>count &gt; 1</code></h4><p>成功后递减。</p></div>
+        <div class="card"><h4><code>count = 1</code></h4><p>成功后从队列移除。</p></div>
+      </div>
+      <p>失败不扣次数；<code>persist()</code> 采用临时文件 + rename 原子替换，进程被杀不会写坏计划。</p>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section id="s18">
+      <h2><span class="num">11</span>错误处理与重试</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>异常</th><th>处理</th></tr></thead>
+          <tbody>
+            <tr><td><code>AccessibilityServiceUnavailable</code></td><td>提示去系统设置开启，不重试。</td></tr>
+            <tr><td><code>CaptureFailed</code>（全黑）</td><td>重试 2 次 → 停止，提示 FLAG_SECURE / 窗口问题。</td></tr>
+            <tr><td><code>CaptureFailed</code>（其他）</td><td>按 <code>capture.retries</code> 重试 → 停止。</td></tr>
+            <tr><td><code>PageNotRecognized</code></td><td>先尝试恢复总览（主界面点「特勤处」，不盲按返回）；仍失败停止并通知。</td></tr>
+            <tr><td><code>GameNotForeground</code></td><td>中止本轮并等待最多 10 分钟；超时停止。不终止会话。</td></tr>
+            <tr><td><code>InputUnavailable</code></td><td>auto 模式切换后端一次；仍失败停止。</td></tr>
+            <tr><td><code>ITEM_NOT_FOUND</code></td><td>记录日志，跳过该部门，继续其他部门。</td></tr>
+            <tr><td><code>MISSING_MATERIALS</code> / <code>BUY_FAILED</code></td><td>记录日志，跳过该部门；不扣计划次数。</td></tr>
+            <tr><td>连续 3 轮 OCR 全空</td><td>停止（可能黑屏或被保护）。</td></tr>
+            <tr><td><code>SafetyLimitReached</code></td><td>正常停止并通知。</td></tr>
+            <tr><td>未知异常</td><td>记录堆栈 + 失败截图，停止。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>重试原则</b>：只有幂等的截屏 / OCR 可以重试；点击后不盲目重试，先重新观察页面。</p>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section id="s19">
+      <h2><span class="num">12</span>安全设计</h2>
+      <div class="grid g2">
+        <div class="card green">
+          <h4>默认安全策略</h4>
+          <ul>
+            <li>前台包名校验：每次截屏/点击前确认仍在游戏内。</li>
+            <li>页面确认：未知页禁止点击。</li>
+            <li>每轮动作上限 80；可配置最大循环 / 最长运行。</li>
+            <li>自动买材料默认关闭，开启需设置页二次确认。</li>
+            <li>dry-run：完整识别与决策，只记录不点击。</li>
+            <li>暂停 / 停止：通知栏常驻，停止立即取消协程。</li>
+            <li>日志脱敏：不记录账号 / UID；截图只存应用私有目录。</li>
+          </ul>
+        </div>
+        <div class="card amber">
+          <h4>点击前的三道门</h4>
+          <ol>
+            <li><b>我们在游戏里吗？</b> 前台包名 == <code>com.tencent.tmgp.dfm</code>。</li>
+            <li><b>我们在哪个页面？</b> 页面判定明确，非 UNKNOWN。</li>
+            <li><b>目标真的在这吗？</b> 按钮/物品由 OCR 包围盒定位，点击点来自文字本身。</li>
+          </ol>
+          <p class="tiny">任何一道不满足 → 记录并停止/跳过，绝不“凭感觉”点。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <div class="title">设备侧保活（MIUI / HyperOS）</div>
+        <p>Game Turbo / PowerKeeper 会冻结后台进程，前台服务也不能豁免。需要把包名加入
+        <code>MILLET_NO_RESTRICT_APP</code> 白名单。另：<code>am force-stop</code> 会把无障碍服务从
+        <code>enabled_accessibility_services</code> 移除，需要到系统设置里重新开关，必要时重启设备。</p>
+      </div>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section id="s20">
+      <h2><span class="num">13</span>性能预算</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>操作</th><th>目标</th><th>约束 / 说明</th></tr></thead>
+          <tbody>
+            <tr><td>截屏</td><td>100–300ms</td><td>系统限速约 333ms；代码最小间隔 400ms</td></tr>
+            <tr><td>全屏 OCR</td><td>200–600ms</td><td>模拟器 CPU；ML Kit 串行</td></tr>
+            <tr><td>单轮轮巡收菜</td><td>&lt; 15s</td><td>4 个部门，含页面往返</td></tr>
+            <tr><td>列表扫描</td><td>通常 &lt; 30s</td><td>每屏一次 OCR + 一次滚动，最多 40 屏</td></tr>
+            <tr><td>内存峰值</td><td>&lt; 200MB</td><td>Bitmap 及时 recycle，OcrSnapshot 不持有位图</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>优化点：每轮结束释放 Frame / Bitmap；列表扫描复用同一张截图直到滚动；
+      角标检测按 2px 采样，2712 宽度下每行约 400 个采样点。</p>
+    </section>
+
+    <!-- ============ 14 ============ -->
+    <section id="s21">
+      <h2><span class="num">14</span>测试与验证</h2>
+      <div class="kpi">
+        <div class="k"><div class="v">126</div><div class="l">JVM 单测全部通过</div></div>
+        <div class="k"><div class="v">0</div><div class="l">lint error</div></div>
+        <div class="k"><div class="v">38</div><div class="l">lint warning</div></div>
+        <div class="k"><div class="v">1</div><div class="l">受「仓库空间不足」限制的收取验收</div></div>
+      </div>
+      <p class="lead">核心策略：把感知与点击流程从 <code>Bitmap</code> / Android API 中解放出来，
+      用脚本化假画面在 JVM 上覆盖所有业务分支。</p>
+
+      <h3>测试替身</h3>
+      <div class="grid g3">
+        <div class="card"><h4><code>FakeScreenOcr</code></h4><p class="tiny">按顺序返回预设 <code>OcrSnapshot</code>，驱动观察与点击流程。</p></div>
+        <div class="card"><h4><code>FakeInput</code></h4><p class="tiny">记录每次 tap / swipe / back，断言点击坐标与顺序。</p></div>
+        <div class="card"><h4><code>NoopLogger</code> + 可注入时钟</h4><p class="tiny">让冷却、唤醒时间可确定。</p></div>
+      </div>
+
+      <h3>关键覆盖</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>测试文件</th><th>覆盖内容</th></tr></thead>
+          <tbody>
+            <tr><td><code>TextParserTest</code></td><td>计时器 / 价格 / OCR 纠错 / 相似度 / 最佳匹配</td></tr>
+            <tr><td><code>GeometryTest</code></td><td>坐标缩放 / 裁剪 / 越界</td></tr>
+            <tr><td><code>PlanStoreTest</code> / <code>SchedulerTest</code></td><td>FIFO、count 语义、原子持久化、唤醒时间</td></tr>
+            <tr><td><code>PageDetectorTest</code></td><td>页面判定优先级（含单标题详情页、交易行双锚点）</td></tr>
+            <tr><td><code>DashboardStatusResolverTest</code></td><td>标题锚点 / 2×2 网格推断 / 状态归属上方标题 / 角标归属</td></tr>
+            <tr><td><code>AlertBadgeDetectorTest</code></td><td>颜色容差、连通域尺寸、dx/dy 窗口、误报过滤</td></tr>
+            <tr><td><code>HarvestFlowTest</code></td><td>轮巡顺序、制造中跳过、收不到不冷却、失败隔离、动作上限、成功才消费计划</td></tr>
+            <tr><td><code>CraftingControllerTest</code></td><td>收菜、导航（升级页→前往生产）、页面内返回恢复、仓库满拒绝、列表扫描、详情校验、缺材料、补料价格守卫、首行到底判定</td></tr>
+            <tr><td><code>ObserverImplTest</code></td><td>空 OCR、四部门状态、单标题总览、非总览页、OCR 原文日志</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>验证状态时间线</h3>
+      <ul>
+        <li><b>2026-11-18</b>：assembleDebug 成功，67 单测通过，lint 0 error。</li>
+        <li><b>2026-11-19</b>：76 单测通过（新增状态解析与前台守卫）。</li>
+        <li><b>2026-11-20</b>：102 单测通过（抽出 <code>ScreenOcr</code>，新增点击流程测试）。</li>
+        <li><b>2026-11-20 晚</b>：119 单测通过（新增角标 5、归属 3、轮巡 2、前往生产 2、补齐 2、首行到底 1）。</li>
+        <li><b>2026-11-21</b>：<b>126 单测通过</b>（开始制造兜底点 3 个、页面内返回 3 个、收取拒绝 1 个）；新增 dry-run 开始前确认。</li>
+        <li><b>2026-11-21 实机</b>：真实点击全流程跑通。修复横屏手势坐标截断（bounds=2712×1220），
+        修复生产页不响应安卓返回键（改用页面内左上角箭头，生产页连点两次）；
+        四部门轮巡、进入升级页→前往生产→收获、失败冷却均按预期执行。</li>
+        <li><b>2026-11-21 实机发现</b>：点击「收获」时游戏提示「仓库空间不足」，物品不会入账。
+        App 已能识别该提示并如实返回失败；需用户清理仓库后才能完成收取验收。</li>
+      </ul>
+      <div class="callout">
+        <div class="title">真机已知限制</div>
+        <p>1）仓库满时「收获」会被游戏拒绝，属于账号状态，不是点击失败；
+        2）生产计划里的物品必须在当前部门列表真实存在，否则按 ITEM_NOT_FOUND 冷却；
+        实机当前列表中未出现「精英防弹背心 / 9x39mm BP / 战地医疗箱」，需要按实际可制造物品调整 plan.json。</p>
+      </div>
+    </section>
+
+    <!-- ============ 15 ============ -->
+    <section id="s22">
+      <h2><span class="num">15</span>构建、安装与发布</h2>
+
+      <h3>环境</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>项</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>JDK</td><td>17+（本机 21）</td></tr>
+            <tr><td>Gradle / AGP / Kotlin</td><td>8.11.1 / 8.7.3 / 2.0.21</td></tr>
+            <tr><td>compileSdk / minSdk</td><td>35 / 30（Android 11+，无障碍截屏要求）</td></tr>
+            <tr><td>Gradle 缓存</td><td>项目独立 <code>.gradle-home</code>，避开全局 init.gradle</td></tr>
+            <tr><td>目标设备</td><td>横屏；实机 2712×1220；模拟器建议 1920×1080</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>构建与安装</h3>
+      <pre><code><span class="comment"># 构建 + 单测</span>
+cd C:\app\soft\youxi\sjz\android
+GRADLE_USER_HOME=C:\app\soft\youxi\sjz\.gradle-home \
+  C:\app\soft\gradle-8.11.1\bin\gradle.bat :app:assembleDebug :app:testDebugUnitTest
+
+<span class="comment"># 安装到已连接设备（先确认 adb devices）</span>
+C:\app\soft\android-sdk\platform-tools\adb.exe install -r \
+  app\build\outputs\apk\debug\app-debug.apk
+
+<span class="comment"># 启动</span>
+C:\app\soft\android-sdk\platform-tools\adb.exe shell am start \
+  -n com.sjz.harvest/.ui.MainActivity</code></pre>
+
+      <h3>交付物</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>文件</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>dist/sjz-harvest-0.1.0-debug-20261120.apk</code></td><td>最新 debug APK，61,281,756 字节</td></tr>
+            <tr><td><code>dist/sjz-harvest-0.1.0-debug-20261120.apk.sha256</code></td><td>SHA-256 校验文件</td></tr>
+            <tr><td><code>docs/05-architecture.html</code></td><td>本文（单文件、离线可读）</td></tr>
+            <tr><td><code>docs/02-architecture.md</code></td><td>Markdown 架构契约（与本文同源）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>APK SHA-256：<span class="hash">9f1dbfb372c4253128744874bfae4b9af295cb085e0d60f3998c7aea1e258b7e</span></p>
+
+      <h3>首次使用顺序</h3>
+      <ol>
+        <li>设备横屏；模拟器建议 1920×1080 并开启 root（输入更可靠）。</li>
+        <li>安装 APK → 打开无障碍服务 → 授予通知权限。</li>
+        <li>App 内「自检」：截屏 / OCR / 输入后端 / 前台包名。</li>
+        <li>编辑生产计划（从 catalog 选择，或导入 plan.json）。</li>
+        <li>先开 <b>dry-run</b> 跑一轮，检查日志中的识别结果。</li>
+        <li>关闭 dry-run，游戏切到前台，点开始。</li>
+      </ol>
+    </section>
+
+    <!-- ============ 16 ============ -->
+    <section id="s23">
+      <h2><span class="num">16</span>架构决策记录（ADR）</h2>
+      <p class="lead">记录“为什么这样做”，避免后来者把有意的约束当成缺陷改掉。</p>
+
+      <details open>
+        <summary>基础决策 D001–D016</summary>
+        <div class="inner">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>决策</th><th>理由 / 影响</th></tr></thead>
+              <tbody>
+                <tr><td>D001</td><td>外部 UI 自动化，不读内存、不改包、不注入</td><td>技术风险低；仍受行为检测 / ToS 约束</td></tr>
+                <tr><td>D002</td><td>主交付为 Android 原生 App（Kotlin）</td><td>用户要求手机 App；不需要电脑常开</td></tr>
+                <tr><td>D003</td><td>截屏用 AccessibilityService.takeScreenshot（API 30+）</td><td>无需 MediaProjection 每次授权；~333ms 限速</td></tr>
+                <tr><td>D004</td><td>输入提供 root / 无障碍手势 / dry-run，auto 优先 root</td><td>游戏常用 Vulkan，无障碍手势可能被忽略；root 更可靠</td></tr>
+                <tr><td>D005</td><td>全屏 OCR + 文本锚点 / 模糊匹配为主，固定坐标兜底</td><td>分辨率差异大；文字包围盒天然给出点击点</td></tr>
+                <tr><td>D006</td><td>ML Kit 中文 bundled 模型</td><td>离线、不依赖 GMS、中文识别好</td></tr>
+                <tr><td>D007</td><td>v0.1 不引入 OpenCV / 模板匹配</td><td>OCR + 像素比例已够用；少一个原生依赖</td></tr>
+                <tr><td>D008</td><td>JSON assets → 首次启动复制到内部存储</td><td>kotlinx.serialization 直接反序列化；可导出</td></tr>
+                <tr><td>D009</td><td>plan 按部门 FIFO；count=-1 无限；成功后消费</td><td>断点续跑；失败不扣次数</td></tr>
+                <tr><td>D010</td><td>安全默认：前台校验、未知页停止、动作上限、关闭自动买材料</td><td>宁可停不可误点</td></tr>
+                <tr><td>D011</td><td>通知栏作为常驻控制面，不做悬浮窗</td><td>避免遮挡截图 / 误触；无需悬浮窗权限</td></tr>
+                <tr><td>D012</td><td>GPL-3.0；NOTICE 注明参考 DeltaForceSS</td><td>参考了公开业务逻辑 / 物品数据；保持许可兼容</td></tr>
+                <tr><td>D013</td><td>纯 Kotlin 单测 + 假感知集成测试</td><td>本机无游戏环境，用接口假实现覆盖分支</td></tr>
+                <tr><td>D014</td><td>v0.1 不做自动登录 / 出售 / 跑刀 / 多开 / 反检测</td><td>控制范围与风险</td></tr>
+                <tr><td>D015</td><td>校准非必需：默认全屏 OCR</td><td>降低使用门槛；赛季大改再校准</td></tr>
+                <tr><td>D016</td><td>保留 pc/ Python+ADB 作为第二交付</td><td>用户要求两者；主交付先保证 Android</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>感知与页面判定 D017–D031</summary>
+        <div class="inner">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>决策</th><th>理由 / 影响</th></tr></thead>
+              <tbody>
+                <tr><td>D017</td><td>总览判定要求 ≥2 个部门标题，或单标题邻域有状态词/计时器</td><td>详情页也有标题；单标题判总览会让补产停在详情页</td></tr>
+                <tr><td>D018</td><td>收取按钮文字与完成状态关键词分离</td><td>避免把「完成」状态文本当按钮点击</td></tr>
+                <tr><td>D019</td><td>补产必须验证制造面板关闭才 SUCCESS；失败不扣计划</td><td>点击未命中时不能错误消费计划</td></tr>
+                <tr><td>D020</td><td>部门失败冷却 300s；连续未知达上限停止</td><td>防止缺材料时每 5s 重扫 40 屏空转</td></tr>
+                <tr><td>D021</td><td>仅宽 &lt;1600 截图 2× 放大；rotateIfPortrait 默认 false</td><td>大图放大收益低；旋转后手势坐标可能错位</td></tr>
+                <tr><td>D022</td><td>新增 auction.maxUnitPrice；计划分类必须匹配 catalog</td><td>防止高价成交与同名物品串分类</td></tr>
+                <tr><td>D023</td><td>按实机适配：左列表 + 右详情同屏，没有独立制造弹窗</td><td>新增 viewport 与 detailRegion，防误造上一件</td></tr>
+                <tr><td>D024</td><td>默认配置绝不点击「一键补齐」</td><td>涉及真实资产；流程未验证</td></tr>
+                <tr><td>D025</td><td>交易行判定要求 ≥2 个锚点</td><td>主界面底部「交易行」不再误判</td></tr>
+                <tr><td>D026</td><td>恢复总览先识别页面；主界面点「特勤处」，不盲按返回</td><td>盲目 back 可能直接退出游戏</td></tr>
+                <tr><td>D027</td><td>新增 craftingKeywords（制造中 / 生产中）</td><td>无计时器时不能回退成 DONE 误收菜</td></tr>
+                <tr><td>D028</td><td>状态解析抽为纯 Kotlin；标题锚点 + 网格推断；doneWhenNoStatus=false</td><td>实机标题漏识别、空闲被误判；固定坐标不准</td></tr>
+                <tr><td>D029</td><td>ForegroundGuard：截屏/点击前校验前台包名</td><td>曾把 App 自己界面当游戏继续操作</td></tr>
+                <tr><td>D030</td><td>自动化运行在 specialUse 前台服务</td><td>MIUI 会冻结后台进程；仅通知不够</td></tr>
+                <tr><td>D031</td><td>左列表页 ≥3 行文字即判列表页；开始制造后不盲目返回</td><td>旧判据会把列表页当弹窗导致补产失败</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>实机适配与代码移植 D032–D042</summary>
+        <div class="inner">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>决策</th><th>理由 / 影响</th></tr></thead>
+              <tbody>
+                <tr><td>D032</td><td>抽出 ScreenOcr / OcrSnapshot；注入 nanoTime；新增 26 个单测</td><td>原流程无法脱离 Bitmap 单测；生产行为不变</td></tr>
+                <tr><td>D033</td><td>状态文字只归属位于其上方的标题</td><td>实机 2712×1220 最近锚点会串行；已 dry-run 验证</td></tr>
+                <tr><td>D034</td><td>黄色「!」角标判 DONE；导航为 部门→XX升级→前往生产→收获</td><td>完成卡片没有文字；角标需按右侧窗口归属</td></tr>
+                <tr><td>D035</td><td>固定分区轮巡收取，默认开启；收不到不冷却</td><td>用户明确要求；比纯状态识别可靠且有界</td></tr>
+                <tr><td>D036</td><td>允许移植 DeltaForceSS 代码（GPL-3.0），保留版权头与 NOTICE</td><td>用户授权；派生文件继续 GPL-3.0</td></tr>
+                <tr><td>D037</td><td>移植补料确认流程与首行到底判定</td><td>D024 仅对默认 autoBuyMaterials=false 有效；补齐默认关闭</td></tr>
+                <tr><td>D038</td><td>开始制造兜底点写入 profile.craft.startPoint 并由业务使用</td><td>仅在三重前置条件成立时点击；点击后须见制造面板消失，否则判失败</td></tr>
+                <tr><td>D039</td><td>部门页/生产页恢复总览改用页面内左上角返回箭头（dashboard.departmentBackPoint）</td><td>实机安卓返回键无效；生产页需连点两次；每次点击后重新判页，两次未回总览即停止</td></tr>
+                <tr><td>D040</td><td>收取后 500ms 截图识别拒绝提示（dashboard.collectBlockedTexts）</td><td>实机仓库满时只弹「仓库空间不足」且按钮仍在；不回读会误报收取成功</td></tr>
+                <tr><td>D041</td><td>主界面「特勤处」改用归一化固定点 dashboard.lobbyEntryPoint；OCR 只预审（5 个导航字命中 ≥4）</td><td>「特战干员」紧邻特勤处，OCR 合并/中心偏移会点进干员选择界面；固定点让识别与点击坐标解耦</td></tr>
+                <tr><td>D042</td><td>补产默认第一行模式：点固定点 itemList.firstRowPoint，不按名称扫描；计划物品名仅用于详情 OCR 预审</td><td>用户要求自己置顶目标；旧视口上边界还会漏掉第一行。固定点按实际宽高归一化，非 16:9 不再偏 25%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============ 17 ============ -->
+    <section id="s24">
+      <h2><span class="num">17</span>已知限制与路线图</h2>
+      <div class="grid g2">
+        <div class="card amber">
+          <h4>已知限制</h4>
+          <ul>
+            <li>无障碍手势在部分游戏 / 模拟器上被忽略；root 更可靠但需开启。</li>
+            <li>游戏若启用 FLAG_SECURE，截屏全黑；无合法绕过，App 报错停止。</li>
+            <li>点击注入可能被行为检测识别；项目不做规避。</li>
+            <li>补料确认页尚未实机验证；默认配置永不点击「一键补齐」。</li>
+            <li>材料充足时的「开始制造」仍需实机验证。</li>
+            <li>2712×1220 非 16:9；viewport 与 detailRegion 已按该布局标定，换分辨率需重校准。</li>
+            <li>第一行模式要求玩家先把目标物品置顶；固定点 lobbyEntryPoint / firstRowPoint 按实机图标定，换 UI 需重标。详情标题完全读不到时会告警并继续，需自行确认置顶正确。</li>
+            <li>右侧详情是否即时刷新待验证；不匹配时代码停止而不是继续制造。</li>
+            <li><code>pc/</code> 目前只有接口骨架。</li>
+          </ul>
+        </div>
+        <div class="card green">
+          <h4>路线图</h4>
+          <ul>
+            <li><b>P0</b>：设备重连 → 安装最新 APK → dry-run 一轮 → 关闭 dry-run 实跑收菜 + 补产。</li>
+            <li><b>P0</b>：验证「开始制造」与补料确认页的真实布局。</li>
+            <li><b>P1</b>：把 DeltaForceSS 的端游流程适配到 <code>pc/</code>，复用同一套配置语义。</li>
+            <li><b>P1</b>：赛季更新工具（截图 → 校准 → 导出 profile diff）。</li>
+            <li><b>P2</b>：多设备 / 多分辨率 profile 管理。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <div class="title">风险声明</div>
+        <p>自动化操作违反游戏用户协议，可能导致封号。项目按 GPL-3.0 提供，不对账号损失负责。
+        请在自己能承受风险的前提下使用，并优先在 dry-run 与低价值场景验证。</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>特勤处收菜 · 架构设计文档 · 2026-11-20 · v0.1.0 · 单文件离线版（无外部 CDN / 字体 / 图片）</p>
+      <p>许可证 GPL-3.0。业务逻辑参考 <b>DeltaForceSS</b>（yi-zelin/DeltaForceSS，GPL-3.0），
+      移植部分保留其版权与许可声明，详见 <code>NOTICE.md</code>。</p>
+    </footer>
+
+  </main>
+</div>
+
+<a href="#" class="totop" id="totop" aria-label="回到顶部">↑</a>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var map = {};
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    map[id] = a;
+  });
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[id]'));
+  var topping = false;
+
+  function onScroll() {
+    var y = window.scrollY || window.pageYOffset;
+    var current = sections[0] ? sections[0].id : null;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].getBoundingClientRect().top <= 110) current = sections[i].id;
+    }
+    links.forEach(function (a) { a.classList.remove('active'); });
+    if (current && map[current]) map[current].classList.add('active');
+    document.getElementById('totop').classList.toggle('show', y > 600);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

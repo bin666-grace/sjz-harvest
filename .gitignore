@@ -1,0 +1,54 @@
+# ---------- Android / Gradle ----------
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+.gradle-home/
+.gradle/
+android/.idea/
+android/captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ---------- IDE ----------
+.idea/
+*.iml
+.vscode/
+*.hprof
+
+# ---------- 构建产物 ----------
+build/
+out/
+dist/
+
+# ---------- 运行日志 ----------
+logs/
+*.log
+android/app/src/main/assets/logs/
+
+# ---------- Python（pc/ 版本 / 本地工具） ----------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- 调试素材 / 截图（含设备与游戏 UID，不入库） ----------
+.debug/
+pi/
+devscreen*.png
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 本地敏感配置 ----------
+android/keystore.properties
+*.jks
+*.keystore

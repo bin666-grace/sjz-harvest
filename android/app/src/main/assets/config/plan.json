@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "departments": {
+    "tech": [
+      {"item": "3/7可调倍率狙击镜", "count": -1, "enabled": true}
+    ],
+    "work": [
+      {"item": "9x39mm BP", "count": 3, "enabled": true}
+    ],
+    "medical": [
+      {"item": "战地医疗箱", "count": -1, "enabled": true}
+    ],
+    "armor": [
+      {"item": "精英防弹背心", "count": -1, "enabled": true}
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "gamePackage": "com.tencent.tmgp.dfm",
+  "profileFile": "profile.json",
+  "catalogFile": "catalog.json",
+  "planFile": "plan.json",
+  "input": {
+    "backend": "auto",
+    "tapHoldMs": 60,
+    "swipeDurationMs": 500,
+    "jitterPx": 3,
+    "actionDelayMinMs": 120,
+    "actionDelayMaxMs": 350
+  },
+  "capture": {
+    "minIntervalMs": 400,
+    "retries": 3,
+    "rotateIfPortrait": false
+  },
+  "timing": {
+    "pageTimeoutMs": 8000,
+    "pollIntervalMs": 250,
+    "collectWaitMs": 1500,
+    "craftWaitMs": 2000,
+    "auctionWaitMs": 1800,
+    "scrollSettleMs": 800,
+    "cycleBufferSec": 30,
+    "maxScrolls": 40,
+    "ocrRetries": 2,
+    "failureBackoffSec": 300
+  },
+  "safety": {
+    "dryRun": false,
+    "autoBuyMaterials": false,
+    "requireGameForeground": true,
+    "stopOnUnknownPage": true,
+    "sweepDepartments": true,
+    "maxCycles": 0,
+    "maxRuntimeMinutes": 0,
+    "maxActionsPerCycle": 80,
+    "maxConsecutiveUnknownCycles": 3
+  },
+  "logging": {
+    "maxLines": 300,
+    "saveFailureScreenshots": true,
+    "dumpOcrText": false
+  }
+}

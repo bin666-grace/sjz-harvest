@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Sjz" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/sjz_primary</item>
+        <item name="colorPrimaryDark">@color/sjz_primary_dark</item>
+        <item name="colorSecondary">@color/sjz_accent</item>
+        <item name="android:colorBackground">@color/sjz_background</item>
+        <item name="android:statusBarColor">@color/sjz_primary_dark</item>
+    </style>
+</resources>
