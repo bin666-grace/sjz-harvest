@@ -15,7 +15,8 @@
 - 主交付：`android/` 下的 Kotlin Android App（APK），运行在安卓模拟器/真机
 - 次交付：`pc/` 下的 Python + ADB 版本（可选，第二优先级）
 - 当前版本：0.1.0（2026-11-22 有未发布改动，见第 11 节）
-- 最后更新：2026-11-22
+- 最后更新：2026-11-24
+- 公开仓库：<https://github.com/bin666-grace/sjz-harvest>（GPL-3.0，main 分支）
 - 架构文档：`docs/02-architecture.md`（契约源）、`docs/05-architecture.html`（单文件离线可读版，同步副本 `dist/architecture.html`）
 
 ---
@@ -360,6 +361,17 @@ sha256 = `9db05df07345fa77c01e55c44084d93a55f93a797773dbb755a59314d115d89e`）�
 - `pc/` 目前只有接口骨架，未实现 ADB 截屏/点击与 OCR 主循环。
 
 ## 11. 变更记录
+
+### 2026-11-24 / 开源发布
+- **创建公开仓库**：<https://github.com/bin666-grace/sjz-harvest>（main，GPL-3.0）。
+  首次提交 113 个文件，19,402 行；提交作者邮箱使用 GitHub 匿名地址
+  `300913100+bin666-grace@users.noreply.github.com`。
+- `.gitignore` 新增 `.debug/`、`pi/`、`devscreen*.png`：调试截图含设备信息与
+  游戏 UID，不入库（`.venv/`、`.gradle-home/`、`dist/`、`*.apk`、`*.log` 原本已忽略）。
+- README 顶部新增 GPL/Android/Kotlin/ML Kit 徽章与英文简介，方便仓库首页展示。
+- 仓库描述与 topics：android、kotlin、automation、ocr、ml-kit、
+  accessibility-service、game-automation、delta-force、macro。
+- 注意：**不要**把 `pi/` 里的游戏截图原样上传（底部含游戏 UID 与资产信息）。
 
 ### 2026-11-22 / 未发布（程序固定点：主界面特勤处 + 生产第一行，OCR 仅预审）
 - **修复误入干员选择界面**：主界面底部「特战干员 | 特勤处」相邻，原实现点击
